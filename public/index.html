@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <link
+      rel="shortcut icon"
+      href="https://muslimcoins-ico.com/wp-content/uploads/2021/06/Metamask-logo-blanc.png"
+      type="image/x-icon"
+    />
+
+    <style>
+      body {
+        background-color: rgb(49, 49, 49);
+      }
+
+      * {
+        padding: none;
+        margin: 0;
+        box-sizing: border-box;
+
+        font-family: Consolas;
+      }
+
+      .container {
+        width: 100vw;
+        height: 100vh;
+
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .login-btn {
+        width: 232px;
+        height: 60px;
+        padding: 10px;
+
+        font-size: 16px;
+        font-weight: bold;
+
+        background-color: rgb(0, 174, 255);
+        color: #fff;
+
+        border: none;
+        border-radius: 15px;
+      }
+
+      .login-btn:hover {
+        cursor: pointer;
+        background-color: rgb(6, 144, 207);
+      }
+
+      .login-btn-deactive {
+        width: 232px;
+        height: 60px;
+        padding: 10px;
+
+        font-size: 16px;
+        font-weight: bold;
+
+        background-color: rgb(161, 161, 161);
+        color: #fff;
+
+        border: none;
+        border-radius: 15px;
+      }
+
+      .login-btn-deactive:hover {
+        cursor: not-allowed;
+      }
+
+      #login {
+        transition: 0.3s;
+      }
+    </style>
+
+    <title>Metamask Login</title>
+  </head>
+  <body>
+    <div class="container">
+      <button class="login-btn" id="login">Login with metamask</button>
+    </div>
+
+    <script defer>
+      let address;
+
+      window.onload = () => {
+        const btn = document.getElementById("login");
+        if (!window.ethereum) {
+          alert("Please install metamask.");
+          btn.classList = "login-btn-deactive";
+        } else {
+          btn.addEventListener("click", metaLogin);
+        }
+      };
+
+      async function metaLogin() {
+        address = await ethereum.request({ method: "eth_requestAccounts" });
+        let challenge;
+
+        if (!address[0]) {
+          alert("erro");
+          return;
+        }
+
+        fetch("http://localhost:8000/auth", {
+          headers: {
+            "Content-Type": "application/json",
+          },
+          method: "POST",
+          body: JSON.stringify({ address: address[0] }),
+        })
+          .then((data) => data.json())
+          // Assinar a challenge
+          .then((data) => {
+            challenge = data.challenge.value;
+            return authChallenge(challenge);
+          })
+          // Verificar a assinatura
+          .then((signature) => verify(challenge, signature))
+          // Tratar o resultado
+          .then((result) => result.json())
+          .then((json) => console.log(json))
+          // Tratar erros
+          .catch((err) => console.log(err));
+      }
+
+      async function authChallenge(challenge) {
+        const signature = await window.ethereum.request({
+          method: "personal_sign",
+          params: [challenge, address[0]],
+          from: address[0],
+        });
+        return signature;
+      }
+
+      async function verify(challenge, signature) {
+        const result = await fetch("http://localhost:8000/auth", {
+          headers: {
+            "Content-Type": "application/json",
+          },
+          method: "POST",
+          body: JSON.stringify({ address: address[0], challenge, signature }),
+        });
+        return result;
+      }
+    </script>
+  </body>
+</html>

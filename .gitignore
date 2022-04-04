@@ -1,0 +1,5 @@
+# Dependências
+NODE_MODULES/
+
+# Enviroment variables
+.env
