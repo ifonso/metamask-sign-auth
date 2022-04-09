@@ -1,6 +1,5 @@
-import Static from "./services/static.js";
-import AddressAuth from "./services/auth.js";
 import config from "./config.js"
+import Controller from "./controllers/controllers.js";
 
 const {
 	location,
@@ -12,11 +11,12 @@ const {
 	}
 } = config;
 
-export default class Router {
+class Router {
   constructor() {
-    this.authenticator = new AddressAuth();
+    this.controller = new Controller();
   }
 
+  // Auth route
   async auth(request, response) {
     let data = "";
 
@@ -57,13 +57,34 @@ export default class Router {
       return response.end(JSON.stringify(result));
     });
   }
-
+  
+  // Home
   async default(request, response) {
-    response.writeHead(200, { "Content-Type": "text/html" });
-    response.write(Static.getIndex());
-    response.end();
+    const { stream } = await this.controller.getFileStream(homeHTML);
+    response.writeHead(200, {
+      "Content-Type": CONTENT_TYPE[".html"]
+    });
+
+    return stream.pipe(response);
   }
 
+  // Static files
+  async static(request, response) {
+    const {
+      stream,
+      type
+    } = await this.controller.getFileStream(request.url);
+
+    if(CONTENT_TYPE[type]) {
+      response.writeHead(200, {
+        "Content-Type": CONTENT_TYPE[type]
+      })
+    }
+
+    return stream.pipe(response);
+  }
+
+  // Routes handler
   async handler(request, response) {
     const { method, url } = request;
 
@@ -82,8 +103,13 @@ export default class Router {
     }
 
     // Direciona pra rota de autenticação da metamask
-    if (url === "/auth" && method === "POST")) {
+    if (url === "/auth" && method === "POST") {
       return await this.auth.apply(this, [request, response]);
+    }
+
+    // Direciona pra static
+    if (method === "GET") {
+      return await this.static.apply(this, [request, response]);
     }
 
     // Not Found
@@ -91,3 +117,5 @@ export default class Router {
     return response.end();
   }
 }
+
+export default Router;
