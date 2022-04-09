@@ -1,5 +1,16 @@
 import Static from "./services/static.js";
 import AddressAuth from "./services/auth.js";
+import config from "./config.js"
+
+const {
+	location,
+	pages: {
+		homeHTML
+	},
+	constants: {
+		CONTENT_TYPE
+	}
+} = config;
 
 export default class Router {
   constructor() {
@@ -7,10 +18,6 @@ export default class Router {
   }
 
   async auth(request, response) {
-    /**
-     *  @TODO :Pôr tudo isso nos controllers
-     **/
-
     let data = "";
 
     response.writeHead(200, { "Content-type": "application/json" });
@@ -58,19 +65,29 @@ export default class Router {
   }
 
   async handler(request, response) {
-    // Direciona pros métodos da rota default
-    if (request.url === "/") {
-      response.setHeader("Access-Control-Allow-Origin", "*");
-      const method = this[request.method.toLowerCase()] || this.default;
-      return method.apply(this, [request, response]);
+    const { method, url } = request;
+
+    // Redirecionar pra home
+    if(url === "/" && method === "GET") {
+      response.writeHead(302, {
+        "Location": location.home
+      })
+      return response.end();
     }
 
-    // Direciona pros métodos da rota auth
-    if ((request.url === "/auth") & (request.method.toLowerCase() === "post")) {
+    // Retorna a página home
+    if (url === "/home" && method === "GET") {
+      response.setHeader("Access-Control-Allow-Origin", "*");
+      return this.default.apply(this, [request, response]);
+    }
+
+    // Direciona pra rota de autenticação da metamask
+    if (url === "/auth" && method === "POST")) {
       return await this.auth.apply(this, [request, response]);
     }
 
-    // Entrega a página default
-    return this.default.apply(this, [request, response]);
+    // Not Found
+    response.writeHead(404);
+    return response.end();
   }
 }
