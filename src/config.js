@@ -17,7 +17,7 @@ export default {
     publicDir
   },
   pages: {
-    home: 'index.html'
+    homeHTML: 'index.html'
   },
   location: {
     home: '/home'
