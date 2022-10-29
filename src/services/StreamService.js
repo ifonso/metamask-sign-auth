@@ -1,15 +1,18 @@
 import { extname, join } from "path";
-import config from "../config.js";
 import fsPromise from "fs/promises";
 import fs from "fs";
+
+import config from "../config.js";
 
 class streamService {
   createFileStream(filename) {
     return fs.createReadStream(filename);
   }
 
+  // (file name) -> Return file path & type
   async getFileInfo(file) {
     const fullPath = join(config.dirs.publicDir, file);
+    // Check permissions
     await fsPromise.access(fullPath);
 
     return {
@@ -18,6 +21,7 @@ class streamService {
     }
   }
 
+  // (file name) -> Return file type & redable stream
   async getFileStream(file) {
     const { name, type } = await this.getFileInfo(file);
     

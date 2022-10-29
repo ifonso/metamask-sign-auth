@@ -1,43 +1,36 @@
 import config from "./config.js"
 import Controller from "./controllers/controllers.js";
+import AddressAuth from "./services/WalletAuthService.js";
 
 const {
 	location,
-	pages: {
-		homeHTML
-	},
-	constants: {
-		CONTENT_TYPE
-	}
+	pages: { homeHTML },
+	constants: { CONTENT_TYPE }
 } = config;
 
 class Router {
   constructor() {
     this.controller = new Controller();
+    this.authenticator = new AddressAuth();
   }
 
   // Auth route
   async auth(request, response) {
-    let data = "";
-
-    response.writeHead(200, { "Content-type": "application/json" });
+    let data;
 
     request.on("data", (chunck) => {
-      data += chunck;
+      data = chunck.toString();
     });
 
     request.on("end", () => {
-      const user = {
-        address: null,
-        challenge: null,
-        signature: null,
-      };
+      console.log(data)
+      // address - signature - challenge
+      const user = JSON.parse(data);
 
-      Object.assign(user, JSON.parse(data));
-
-      console.log("USUÁRIO: ", user);
-
+      // Check if address was given
       if (!user.address) {
+        response.writeHead(400);
+        
         return response.end(
           JSON.stringify({
             error: true,
@@ -46,20 +39,24 @@ class Router {
         );
       }
 
+      // Passing data to auth
       const result = this.authenticator.auth(
         user.address,
         user.challenge,
         user.signature
       );
+      
+      if (result.name !== "approved") {
+        response.writeHead(403, { "Content-type": "application/json" });  
+      }
 
-      console.log("RESULTADO: ", result);
-
+      response.writeHead(200, { "Content-type": "application/json" });
       return response.end(JSON.stringify(result));
     });
   }
   
   // Home
-  async default(request, response) {
+  async default(_, response) {
     const { stream } = await this.controller.getFileStream(homeHTML);
     response.writeHead(200, {
       "Content-Type": CONTENT_TYPE[".html"]

@@ -1,11 +1,14 @@
 import streamService from "../services/StreamService.js";
 
-export default class Controller {
+class Controller {
   constructor() {
     this.fileStreamService = new streamService();
   }
 
+  // (file name) -> Return file type & redable stream
   async getFileStream(filename) {
     return this.fileStreamService.getFileStream(filename)
   }
 }
+
+export default Controller;

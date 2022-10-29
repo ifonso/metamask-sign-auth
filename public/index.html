@@ -7,9 +7,13 @@
 
     <link
       rel="shortcut icon"
-      href="https://muslimcoins-ico.com/wp-content/uploads/2021/06/Metamask-logo-blanc.png"
+      href="https://upload.wikimedia.org/wikipedia/commons/thumb/3/36/MetaMask_Fox.svg/800px-MetaMask_Fox.svg.png"
       type="image/x-icon"
     />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
 
     <style>
       body {
@@ -21,7 +25,7 @@
         margin: 0;
         box-sizing: border-box;
 
-        font-family: Consolas;
+        font-family: 'JetBrains Mono', monospace;
       }
 
       .container {
@@ -89,6 +93,7 @@
 
       window.onload = () => {
         const btn = document.getElementById("login");
+
         if (!window.ethereum) {
           alert("Please install metamask.");
           btn.classList = "login-btn-deactive";
@@ -99,6 +104,7 @@
 
       async function metaLogin() {
         address = await ethereum.request({ method: "eth_requestAccounts" });
+
         let challenge;
 
         if (!address[0]) {
@@ -106,7 +112,7 @@
           return;
         }
 
-        fetch("http://localhost:8000/auth", {
+        fetch("http://localhost:5500/auth", {
           headers: {
             "Content-Type": "application/json",
           },
@@ -116,7 +122,7 @@
           .then((data) => data.json())
           // Assinar a challenge
           .then((data) => {
-            challenge = data.challenge.value;
+            challenge = data.challenge;
             return authChallenge(challenge);
           })
           // Verificar a assinatura
@@ -138,7 +144,7 @@
       }
 
       async function verify(challenge, signature) {
-        const result = await fetch("http://localhost:8000/auth", {
+        const result = await fetch("http://localhost:5500/auth", {
           headers: {
             "Content-Type": "application/json",
           },

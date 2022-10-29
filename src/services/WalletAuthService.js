@@ -1,20 +1,17 @@
 import { v4 } from "uuid";
 import crypto from "crypto";
-import NodeCach from "node-cache";
+import NodeCache from "node-cache";
 import ethUtil from "ethereumjs-util";
 import sigUtil from "@metamask/eth-sig-util";
 
 class AddressAuth {
   constructor() {
-    this.cache = new NodeCach({
-      stdTTL: 120,
-    });
-
+    this.cache = new NodeCache();
     this.secret = v4();
   }
 
   auth(address, challenge = null, signature = null) {
-    // 1° verificar endereço
+    // Verificar endereço
     if (!this.verifyAddress(address))
       return {
         name: "error",
@@ -22,44 +19,44 @@ class AddressAuth {
         message: "invalid_address",
       };
 
-    // 2° Verificar se tem assinatura
+    // Verificar se tem assinatura
     if (!signature)
       return {
+        name: "approved",
+        value: true,
+        message: "auth_challenge",
         challenge: this.generateChallenge(address),
       };
 
-    // 3° Verificar a challenge
+    // Verificar a challenge
     if (this.verifySignature(challenge, signature)) {
       return {
         name: "approved",
         value: true,
         message: "auth_success",
       };
-    } else {
-      return {
-        name: "approved",
-        value: false,
-        message: "auth_fail",
-      };
-    }
+    } 
+   
+    return {
+      name: "error",
+      value: false,
+      message: "auth_fail",
+    }; 
   }
 
+  // (address) -> returns a hash
   generateChallenge(address) {
-    // const hash = crypto
-    //   .createHmac("sha256", this.secret)
-    //   .update(address + v4())
-    //   .digest("hex");
-    const hash = "SeuJorge";
-    this.cache.set(address.toLowerCase(), hash);
+    const hash = crypto
+      .createHmac("sha256", this.secret)
+      .update(address + v4())
+      .digest("hex");
 
-    const challenge = {
-      name: "challenge",
-      value: hash,
-    };
+    this.cache.set(hash, address.toLowerCase(), 120);
 
-    return challenge;
+    return hash;
   }
 
+  // (hash, signature) -> Returns a bool
   verifySignature(challenge, signature) {
     const recovered = sigUtil.recoverPersonalSignature({
       data: challenge,
@@ -80,6 +77,7 @@ class AddressAuth {
     return false;
   }
 
+  // (address) -> Rturns a bool
   verifyAddress(address) {
     return ethUtil.isValidAddress(address);
   }
