@@ -1,6 +1,4 @@
 import config from "./config.js"
-import Controller from "./controllers/controllers.js";
-import AddressAuth from "./services/WalletAuthService.js";
 
 const {
 	location,
@@ -9,9 +7,9 @@ const {
 } = config;
 
 class Router {
-  constructor() {
-    this.controller = new Controller();
-    this.authenticator = new AddressAuth();
+  constructor(controller, authenticator) {
+    this.controller = controller;
+    this.authenticator = authenticator;
   }
 
   // Auth route
@@ -23,7 +21,6 @@ class Router {
     });
 
     request.on("end", () => {
-      console.log(data)
       // address - signature - challenge
       const user = JSON.parse(data);
 
@@ -51,6 +48,7 @@ class Router {
       }
 
       response.writeHead(200, { "Content-type": "application/json" });
+
       return response.end(JSON.stringify(result));
     });
   }

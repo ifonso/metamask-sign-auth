@@ -51,9 +51,11 @@ class AddressAuth {
       .update(address + v4())
       .digest("hex");
 
-    this.cache.set(hash, address.toLowerCase(), 120);
+    const challenge = "0x" + hash
 
-    return hash;
+    this.cache.set(address.toLowerCase(), challenge, 2000);
+
+    return challenge;
   }
 
   // (hash, signature) -> Returns a bool
@@ -65,9 +67,9 @@ class AddressAuth {
 
     const cacheChallenge = this.cache.get(recovered.toLowerCase());
 
-    console.log(
-      `\n[Process]\ncache: ${cacheChallenge}\nrecovered: ${recovered}\n`
-    );
+    // console.log(
+    //   `\n[Process]\ncache: ${cacheChallenge}\nrecovered: ${recovered}\n`
+    // );
 
     if (cacheChallenge === challenge) {
       this.cache.del(recovered);
