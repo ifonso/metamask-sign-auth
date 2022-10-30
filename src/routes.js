@@ -1,36 +1,33 @@
-import Static from "./services/static.js";
-import AddressAuth from "./services/auth.js";
+import config from "./config.js"
 
-export default class Router {
-  constructor() {
-    this.authenticator = new AddressAuth();
+const {
+	location,
+	pages: { homeHTML },
+	constants: { CONTENT_TYPE }
+} = config;
+
+class Router {
+  constructor(controller, authenticator) {
+    this.controller = controller;
+    this.authenticator = authenticator;
   }
 
+  // Auth route
   async auth(request, response) {
-    /**
-     *  @TODO :Pôr tudo isso nos controllers
-     **/
-
-    let data = "";
-
-    response.writeHead(200, { "Content-type": "application/json" });
+    let data;
 
     request.on("data", (chunck) => {
-      data += chunck;
+      data = chunck.toString();
     });
 
     request.on("end", () => {
-      const user = {
-        address: null,
-        challenge: null,
-        signature: null,
-      };
+      // address - signature - challenge
+      const user = JSON.parse(data);
 
-      Object.assign(user, JSON.parse(data));
-
-      console.log("USUÁRIO: ", user);
-
+      // Check if address was given
       if (!user.address) {
+        response.writeHead(400);
+        
         return response.end(
           JSON.stringify({
             error: true,
@@ -39,38 +36,81 @@ export default class Router {
         );
       }
 
+      // Passing data to auth
       const result = this.authenticator.auth(
         user.address,
         user.challenge,
         user.signature
       );
+      
+      if (result.name !== "approved") {
+        response.writeHead(403, { "Content-type": "application/json" });  
+      }
 
-      console.log("RESULTADO: ", result);
+      response.writeHead(200, { "Content-type": "application/json" });
 
       return response.end(JSON.stringify(result));
     });
   }
+  
+  // Home
+  async default(_, response) {
+    const { stream } = await this.controller.getFileStream(homeHTML);
+    response.writeHead(200, {
+      "Content-Type": CONTENT_TYPE[".html"]
+    });
 
-  async default(request, response) {
-    response.writeHead(200, { "Content-Type": "text/html" });
-    response.write(Static.getIndex());
-    response.end();
+    return stream.pipe(response);
   }
 
-  async handler(request, response) {
-    // Direciona pros métodos da rota default
-    if (request.url === "/") {
-      response.setHeader("Access-Control-Allow-Origin", "*");
-      const method = this[request.method.toLowerCase()] || this.default;
-      return method.apply(this, [request, response]);
+  // Static files
+  async static(request, response) {
+    const {
+      stream,
+      type
+    } = await this.controller.getFileStream(request.url);
+
+    if(CONTENT_TYPE[type]) {
+      response.writeHead(200, {
+        "Content-Type": CONTENT_TYPE[type]
+      })
     }
 
-    // Direciona pros métodos da rota auth
-    if ((request.url === "/auth") & (request.method.toLowerCase() === "post")) {
+    return stream.pipe(response);
+  }
+
+  // Routes handler
+  async handler(request, response) {
+    const { method, url } = request;
+
+    // Redirecionar pra home
+    if(url === "/" && method === "GET") {
+      response.writeHead(302, {
+        "Location": location.home
+      })
+      return response.end();
+    }
+
+    // Retorna a página home
+    if (url === "/home" && method === "GET") {
+      response.setHeader("Access-Control-Allow-Origin", "*");
+      return this.default.apply(this, [request, response]);
+    }
+
+    // Direciona pra rota de autenticação da metamask
+    if (url === "/auth" && method === "POST") {
       return await this.auth.apply(this, [request, response]);
     }
 
-    // Entrega a página default
-    return this.default.apply(this, [request, response]);
+    // Direciona pra static
+    if (method === "GET") {
+      return await this.static.apply(this, [request, response]);
+    }
+
+    // Not Found
+    response.writeHead(404);
+    return response.end();
   }
 }
+
+export default Router;

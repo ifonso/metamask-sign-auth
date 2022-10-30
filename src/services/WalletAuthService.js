@@ -1,20 +1,17 @@
 import { v4 } from "uuid";
 import crypto from "crypto";
-import NodeCach from "node-cache";
+import NodeCache from "node-cache";
 import ethUtil from "ethereumjs-util";
 import sigUtil from "@metamask/eth-sig-util";
 
 class AddressAuth {
   constructor() {
-    this.cache = new NodeCach({
-      stdTTL: 120,
-    });
-
+    this.cache = new NodeCache();
     this.secret = v4();
   }
 
   auth(address, challenge = null, signature = null) {
-    // 1° verificar endereço
+    // Verificar endereço
     if (!this.verifyAddress(address))
       return {
         name: "error",
@@ -22,44 +19,46 @@ class AddressAuth {
         message: "invalid_address",
       };
 
-    // 2° Verificar se tem assinatura
+    // Verificar se tem assinatura
     if (!signature)
       return {
+        name: "approved",
+        value: true,
+        message: "auth_challenge",
         challenge: this.generateChallenge(address),
       };
 
-    // 3° Verificar a challenge
+    // Verificar a challenge
     if (this.verifySignature(challenge, signature)) {
       return {
         name: "approved",
         value: true,
         message: "auth_success",
       };
-    } else {
-      return {
-        name: "approved",
-        value: false,
-        message: "auth_fail",
-      };
-    }
+    } 
+   
+    return {
+      name: "error",
+      value: false,
+      message: "auth_fail",
+    }; 
   }
 
+  // (address) -> returns a hash
   generateChallenge(address) {
-    // const hash = crypto
-    //   .createHmac("sha256", this.secret)
-    //   .update(address + v4())
-    //   .digest("hex");
-    const hash = "SeuJorge";
-    this.cache.set(address.toLowerCase(), hash);
+    const hash = crypto
+      .createHmac("sha256", this.secret)
+      .update(address + v4())
+      .digest("hex");
 
-    const challenge = {
-      name: "challenge",
-      value: hash,
-    };
+    const challenge = "0x" + hash
+
+    this.cache.set(address.toLowerCase(), challenge, 2000);
 
     return challenge;
   }
 
+  // (hash, signature) -> Returns a bool
   verifySignature(challenge, signature) {
     const recovered = sigUtil.recoverPersonalSignature({
       data: challenge,
@@ -68,9 +67,9 @@ class AddressAuth {
 
     const cacheChallenge = this.cache.get(recovered.toLowerCase());
 
-    console.log(
-      `\n[Process]\ncache: ${cacheChallenge}\nrecovered: ${recovered}\n`
-    );
+    // console.log(
+    //   `\n[Process]\ncache: ${cacheChallenge}\nrecovered: ${recovered}\n`
+    // );
 
     if (cacheChallenge === challenge) {
       this.cache.del(recovered);
@@ -80,6 +79,7 @@ class AddressAuth {
     return false;
   }
 
+  // (address) -> Rturns a bool
   verifyAddress(address) {
     return ethUtil.isValidAddress(address);
   }

@@ -1,14 +1,6 @@
-import http from "http";
-import Router from "./routes.js";
+import { logger } from "./utils/utils.js";
+import server from "./server.js";
+import config from "./config.js";
 
-const PORT = 8000;
-const router = new Router();
-
-const server = http.createServer(await router.handler.bind(router));
-
-const startServer = () => {
-  const { address, port } = server.address();
-  console.log(`Server running at: [http://${address}:${port}]`);
-};
-
-server.listen(PORT, startServer);
+server.listen(config.PORT)
+  .on("listening", () => logger.info(`Server running at [${config.PORT}]`))
